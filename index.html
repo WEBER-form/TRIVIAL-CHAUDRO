@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trivial Chaudronnerie — BTS CRCI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>if(!window.Peer){document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')}</script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#e9ebee;--panel:#ffffff;--ink:#1c2128;--ink-2:#4b5563;--line:#cfd4da;--steel:#2a3440;--steel-2:#3b4756;
+  --c0:#f07f1f;--c1:#2f7fd6;--c2:#2fa66f;--c3:#6c5ce7;--c4:#d8433b;--c5:#e5b41c;--c6:#f4f4f2;
+  --ok:#1f9d55;--ko:#c93838;--focus:#ffbf47;
+  --display:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--body:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171b20;--panel:#222831;--ink:#eef1f4;--ink-2:#a9b2bd;--line:#3a434f;--steel:#2a3440;--steel-2:#3b4756;--c6:#e6e8ea}}
+:root[data-theme="dark"]{--bg:#171b20;--panel:#222831;--ink:#eef1f4;--ink-2:#a9b2bd;--line:#3a434f;--c6:#e6e8ea}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;min-height:100%}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1;margin:0}
+button{font-family:inherit;font-size:inherit;cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+input,select{font-family:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);width:100%}
+.hidden{display:none!important}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.btn{border:0;border-radius:8px;padding:12px 18px;background:var(--steel);color:#fff;font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:.02em}
+.btn.sec{background:transparent;color:var(--ink);border:2px solid var(--line);font-size:17px}
+.btn.big{font-size:26px;padding:18px 26px}
+.btn.ok{background:var(--ok)}.btn.ko{background:var(--ko)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.muted{color:var(--ink-2)}
+.small{font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ---- landing ---- */
+#landing{min-height:90vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:26px;padding:24px}
+#landing h1{font-size:clamp(48px,10vw,110px);font-weight:800;letter-spacing:-.01em;text-transform:uppercase}
+#landing h1 span{display:block;font-size:.38em;font-weight:500;letter-spacing:.12em;color:var(--ink-2)}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;width:min(720px,100%)}
+.choice{padding:26px 20px;border-radius:12px;border:2px solid var(--line);background:var(--panel);text-align:left;display:flex;flex-direction:column;gap:6px}
+.choice b{font-family:var(--display);font-size:30px;font-weight:700}
+.cats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:760px}
+.cat{padding:6px 12px;border-radius:999px;color:#fff;font-family:var(--display);font-size:18px;font-weight:700}
+.cat[data-c="5"],.cat[data-c="6"]{color:#1c2128}
+
+/* ---- host layout ---- */
+#host{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){#host{grid-template-columns:1fr}}
+.boardwrap{position:relative}
+#board{width:100%;height:auto;display:block;max-height:88vh;margin:0 auto}
+.sector{cursor:default;transition:opacity .2s}
+.sector.target{cursor:pointer;filter:brightness(1.15)}
+.sector.target .ring{stroke:#fff;stroke-width:5;animation:pulse 1s infinite alternate}
+@keyframes pulse{from{stroke-opacity:.35}to{stroke-opacity:1}}
+@media (prefers-reduced-motion:reduce){.sector.target .ring{animation:none}}
+.side{display:flex;flex-direction:column;gap:12px}
+.teams{display:grid;gap:8px}
+.team{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;border:2px solid transparent;background:var(--panel)}
+.team.active{border-color:var(--ink)}
+.team .name{font-family:var(--display);font-size:22px;font-weight:700}
+.team .tok{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;color:#111;font-size:16px}
+.wedges{width:44px;height:44px}
+.qcard{border-radius:12px;padding:18px;color:#fff;background:var(--steel);min-height:160px}
+.qcard .catname{font-family:var(--display);font-size:22px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.qcard .qtext{font-size:clamp(20px,2.2vw,28px);font-weight:600;margin:12px 0 16px;line-height:1.25}
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;text-align:left;padding:10px 12px;border-radius:8px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;font-size:18px}
+.opt .l{font-family:var(--display);font-weight:800;font-size:22px;width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,.2);display:grid;place-items:center}
+.opt .votes{font-family:var(--display);font-size:18px;opacity:.9}
+.opt.good{background:var(--ok);border-color:var(--ok)}
+.opt.bad{background:var(--ko);border-color:var(--ko)}
+.opt.chosen{outline:3px solid #fff}
+.timer{font-family:var(--display);font-size:34px;font-weight:800;min-width:56px;text-align:right}
+.explain{margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,.25);font-size:16px}
+.dice{width:64px;height:64px;border-radius:12px;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font-family:var(--display);font-size:38px;font-weight:800}
+.roster{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:4px 10px;border-radius:999px;font-size:14px;border:1px solid var(--line);background:var(--panel)}
+.chip i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+#qr{background:#fff;padding:10px;border-radius:8px;width:max-content;max-width:100%}
+#qr img,#qr canvas{display:block;max-width:100%}
+.code{font-family:var(--display);font-size:44px;font-weight:800;letter-spacing:.12em}
+.status{font-size:14px;color:var(--ink-2)}
+.status b.on{color:var(--ok)}.status b.off{color:var(--ko)}
+.levels label{display:inline-flex;align-items:center;gap:6px;margin-right:12px}
+.levels input{width:auto}
+.setup-teams{display:grid;gap:8px}
+.setup-teams .row input{flex:1;min-width:140px}
+.banner{padding:12px 16px;border-radius:10px;background:var(--steel);color:#fff;font-family:var(--display);font-size:24px;font-weight:700}
+.banner.win{background:var(--c5);color:#1c2128;font-size:30px}
+
+/* ---- player ---- */
+#player{max-width:560px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:95vh}
+#player h1{font-size:34px;text-transform:uppercase}
+.pq{border-radius:12px;padding:16px;color:#fff;background:var(--steel)}
+.pq .qtext{font-size:22px;font-weight:600;margin:8px 0 14px;line-height:1.25}
+.pq .opt{font-size:19px;padding:14px 12px}
+.turnbadge{font-family:var(--display);font-size:26px;font-weight:700;padding:12px 14px;border-radius:10px;background:var(--panel);border:2px solid var(--line)}
+.turnbadge.me{border-color:var(--ok)}
+.teamsel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.teamsel button{padding:14px;border-radius:8px;border:2px solid var(--line);background:var(--panel);font-family:var(--display);font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px}
+.teamsel button.sel{border-color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.result{font-family:var(--display);font-size:38px;font-weight:800;text-align:center;padding:10px}
+.result.good{color:var(--ok)}.result.bad{color:var(--ko)}
+.solo-score{font-family:var(--display);font-size:28px;font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ================= LANDING ================= -->
+<section id="landing">
+  <h1>Trivial Chaudronnerie<span>Bac Pro TCI · BTS CRCI · Licence CACI</span></h1>
+  <div class="cats" id="landingCats"></div>
+  <div class="choices">
+    <button class="choice" id="goHost"><b>Animer une partie</b><span class="muted">Le plateau, projeté au tableau. Les équipes, le dé, les questions et le QR code de connexion.</span></button>
+    <button class="choice" id="goPlayer"><b>Rejoindre en apprenti</b><span class="muted">Depuis un téléphone, sans compte : entrez le code affiché au tableau, choisissez votre équipe et répondez en direct.</span></button>
+  </div>
+  <p class="muted small" style="max-width:640px">Six camemberts à gagner, un par compétence du BTS CRCI. Sur une case Défi chaudronnier, une question transversale plus corsée : la réussir permet de choisir un camembert manquant.</p>
+</section>
+
+<!-- ================= HOST ================= -->
+<section id="host" class="hidden">
+  <div class="boardwrap">
+    <div id="setup" class="panel stack">
+      <h2 style="font-size:36px">Nouvelle partie</h2>
+      <div>
+        <div class="small muted" style="margin-bottom:6px">Équipes (2 à 6)</div>
+        <div class="setup-teams" id="setupTeams"></div>
+        <div class="row" style="margin-top:8px"><button class="btn sec" id="addTeam">+ Ajouter une équipe</button></div>
+      </div>
+      <div class="levels">
+        <div class="small muted" style="margin-bottom:6px">Niveaux de questions</div>
+        <label><input type="checkbox" class="lvl" value="1" checked> Bac Pro TCI</label>
+        <label><input type="checkbox" class="lvl" value="2" checked> BTS CRCI</label>
+        <label><input type="checkbox" class="lvl" value="3" checked> Licence CACI</label>
+      </div>
+      <div class="row">
+        <label style="flex:1">Temps par question
+          <select id="timerSel"><option value="20">20 s</option><option value="30" selected>30 s</option><option value="45">45 s</option><option value="60">60 s</option><option value="0">Sans limite</option></select>
+        </label>
+        <label style="flex:1">Camemberts pour gagner
+          <select id="winSel"><option value="6" selected>6 (tous)</option><option value="4">4</option><option value="3">3 (partie courte)</option></select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn big" id="startGame">Lancer la partie</button>
+        <button class="btn sec hidden" id="resumeGame">Reprendre la partie en cours</button>
+      </div>
+    </div>
+    <svg id="board" viewBox="0 0 720 720" class="hidden" aria-label="Plateau de jeu"></svg>
+  </div>
+
+  <aside class="side">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <div><div class="small muted">Code de la partie</div><div class="code" id="roomCode">— — — —</div></div>
+        <div id="qr"></div>
+      </div>
+      <div class="small muted" style="margin-top:8px">Lien encodé dans le QR code :</div>
+      <input id="shareUrl" type="url" style="margin-top:4px">
+      <div class="status" style="margin-top:6px" id="hostStatus">Direct : <b class="off">hors ligne</b></div>
+      <div class="roster" id="roster" style="margin-top:8px"></div>
+    </div>
+
+    <div id="play" class="stack hidden">
+      <div class="banner" id="banner"></div>
+      <div class="teams" id="teamsList"></div>
+      <div class="row">
+        <div class="dice" id="dice">?</div>
+        <button class="btn" id="rollBtn">Lancer le dé</button>
+        <button class="btn sec" id="skipBtn">Passer le tour</button>
+        <button class="btn sec" id="restartBtn">Nouvelle partie</button>
+      </div>
+      <div class="qcard hidden" id="qcard">
+        <div class="catname"><span id="qcat"></span><span class="timer" id="qtimer"></span></div>
+        <div class="qtext" id="qtext"></div>
+        <div class="opts" id="qopts"></div>
+        <div class="explain hidden" id="qexplain"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ok" id="validateBtn">Valider la réponse de l'équipe</button>
+          <button class="btn sec" id="oralOk" style="color:#fff;border-color:#fff">Bonne réponse (oral)</button>
+          <button class="btn sec" id="oralKo" style="color:#fff;border-color:#fff">Mauvaise réponse (oral)</button>
+          <button class="btn hidden" id="nextBtn">Continuer</button>
+        </div>
+      </div>
+      <div class="panel hidden" id="wedgePick"><b>Défi réussi !</b> Choisissez le camembert à ajouter :<div class="row" id="wedgeChoices" style="margin-top:8px"></div></div>
+    </div>
+  </aside>
+</section>
+
+<!-- ================= PLAYER ================= -->
+<section id="player" class="hidden">
+  <h1>Trivial Chaudronnerie</h1>
+  <div id="pJoin" class="stack">
+    <div class="panel stack">
+      <label>Code affiché au tableau<input id="pCode" maxlength="6" autocapitalize="characters" placeholder="ex. ARC7"></label>
+      <label>Votre prénom<input id="pName" maxlength="20" placeholder="ex. Nadia"></label>
+      <button class="btn big" id="pConnect">Rejoindre</button>
+      <div class="status" id="pStatus"></div>
+    </div>
+    <div class="panel" id="pTeamBox" class="hidden" style="display:none">
+      <div class="small muted" style="margin-bottom:8px">Votre équipe</div>
+      <div class="teamsel" id="pTeams"></div>
+    </div>
+  </div>
+  <div id="pGame" class="stack hidden">
+    <div class="turnbadge" id="pTurn"></div>
+    <div class="pq hidden" id="pq">
+      <div class="catname" style="font-family:var(--display);font-size:20px;display:flex;justify-content:space-between"><span id="pqcat"></span><span class="timer" id="pqtimer"></span></div>
+      <div class="qtext" id="pqtext"></div>
+      <div class="opts" id="pqopts"></div>
+      <div class="explain hidden" id="pqexplain"></div>
+    </div>
+    <div class="row" id="pActions"></div>
+    <div class="panel small muted" id="pInfo"></div>
+  </div>
+  <div id="pSolo" class="stack hidden">
+    <div class="panel">
+      <p style="margin:0 0 8px">Mode entraînement : les mêmes questions que la partie, en solo.</p>
+      <div class="row"><select id="soloCat" style="flex:1"></select><select id="soloLvl" style="flex:1"><option value="0">Tous niveaux</option><option value="1">Bac Pro</option><option value="2">BTS</option><option value="3">Licence</option></select></div>
+      <div class="row" style="margin-top:8px;justify-content:space-between"><button class="btn" id="soloNext">Question suivante</button><span class="solo-score" id="soloScore">0 / 0</span></div>
+    </div>
+    <div class="pq hidden" id="sq"><div style="font-family:var(--display);font-size:20px" id="sqcat"></div><div class="qtext" id="sqtext"></div><div class="opts" id="sqopts"></div><div class="explain hidden" id="sqexplain"></div></div>
+  </div>
+  <button class="btn sec" id="pBack" style="margin-top:auto">Retour à l'accueil</button>
+</section>
+
+<script>
+// c: catégorie (0 Soudage,1 Contrôle qualité,2 Mise en forme,3 Dessin technique,4 Procédés de débit,5 Métallurgie,6 Défi chaudronnier)
+// l: niveau (1 Bac Pro TCI, 2 BTS CRCI, 3 Licence CACI) — a: index de la bonne réponse — e: explication
+const QUESTIONS = [
+// ---------- 0 SOUDAGE ----------
+{c:0,l:1,q:"Selon la norme ISO 4063, le procédé numéro 135 désigne :",o:["Le MAG avec fil plein","Le TIG","Le soudage à l'électrode enrobée","L'arc submergé"],a:0,e:"131 = MIG, 135 = MAG fil plein, 136 = MAG fil fourré, 141 = TIG, 111 = électrode enrobée, 121 = arc submergé."},
+{c:0,l:1,q:"En soudage TIG (141), quel gaz de protection utilise-t-on le plus souvent sur acier inoxydable ?",o:["Le CO₂ pur","L'argon","L'air comprimé","L'oxygène"],a:1,e:"Le TIG exige un gaz inerte : argon (parfois argon + hélium). Le CO₂ est un gaz actif réservé au MAG."},
+{c:0,l:2,q:"Une électrode enrobée basique (type E7018) se soude généralement :",o:["En courant continu, électrode au pôle −","En courant continu, électrode au pôle +","Uniquement en courant alternatif","La polarité n'a aucune importance"],a:1,e:"La polarité inverse (électrode au +) donne un bain calme et une bonne pénétration avec les basiques. Elles doivent aussi être étuvées (hydrogène)."},
+{c:0,l:1,q:"Le collage (manque de fusion) sur un cordon MAG est surtout dû à :",o:["Un excès de gaz de protection","Une énergie de soudage insuffisante ou un mauvais angle de torche","Un fil trop propre","Une tôle trop épaisse"],a:1,e:"Le bain n'a pas fondu le métal de base : intensité/tension trop faibles, vitesse trop rapide, angle de torche inadapté ou bain qui « coule » devant l'arc."},
+{c:0,l:2,q:"Le DMOS est :",o:["Un défaut de soudure débouchant","Le Descriptif de Mode Opératoire de Soudage (ISO 15609)","Un détecteur de fumées de soudage","Une certification du soudeur"],a:1,e:"Le DMOS (WPS en anglais) fixe tous les paramètres : procédé, métal d'apport, gaz, intensité, tension, vitesse, préchauffage, séquence…"},
+{c:0,l:2,q:"La QMOS (ISO 15614) consiste à :",o:["Qualifier le soudeur sur une position","Qualifier un mode opératoire par des essais destructifs et non destructifs sur un coupon","Mesurer la qualité du gaz","Contrôler l'étuvage des électrodes"],a:1,e:"On soude un assemblage-test selon le pDMOS, puis on le contrôle (CND, traction, pliage, macro, dureté, résilience) pour obtenir le PV-QMOS."},
+{c:0,l:2,q:"Le préchauffage avant soudage d'un acier trempant sert surtout à :",o:["Accélérer le refroidissement","Ralentir le refroidissement et limiter la fissuration à froid","Éviter la corrosion du cordon","Augmenter la dureté de la ZAT"],a:1,e:"Un refroidissement plus lent réduit la formation de martensite fragile et favorise le dégazage de l'hydrogène."},
+{c:0,l:3,q:"La fissuration à froid (fissuration par l'hydrogène) demande la réunion de trois facteurs :",o:["Hydrogène + structure fragile (martensite) + contraintes","Oxygène + fort courant + gaz inerte","Carbone + cuivre + froid extérieur","Azote + porosités + faible épaisseur"],a:0,e:"Le « triangle » de la fissuration à froid : hydrogène diffusible, microstructure sensible (dureté élevée) et contraintes de bridage/retrait."},
+{c:0,l:3,q:"Le carbone équivalent selon l'IIW se calcule par :",o:["CEQ = C + Mn/6 + (Cr+Mo+V)/5 + (Ni+Cu)/15","CEQ = C + Si + Mn","CEQ = C × Mn / Cr","CEQ = (C + Cr)/2"],a:0,e:"Au-delà de CEQ ≈ 0,40 à 0,45 %, on considère un risque de trempe en ZAT : préchauffage et précautions hydrogène s'imposent."},
+{c:0,l:1,q:"Selon ISO 6947, la position PF correspond à :",o:["À plat","En corniche","Verticale montante","Au plafond"],a:2,e:"PA = à plat, PB = angle à plat, PC = corniche, PD = angle au plafond, PE = plafond, PF = verticale montante, PG = verticale descendante."},
+{c:0,l:1,q:"Le procédé 136 est :",o:["Le MAG avec fil fourré","Le TIG pulsé","Le soudage par points","Le soudage oxyacétylénique"],a:0,e:"Le fil fourré (flux cored) contient une poudre qui améliore la stabilité d'arc et permet de fortes intensités en position."},
+{c:0,l:2,q:"En MAG, augmenter la vitesse de dévidage du fil (générateur à tension constante) provoque :",o:["Une baisse de l'intensité","Une hausse de l'intensité","Aucun changement d'intensité","Une hausse de la tension uniquement"],a:1,e:"Avec un générateur à caractéristique plate, l'intensité s'autorégule sur la vitesse de fil : plus de fil = plus d'ampères."},
+{c:0,l:2,q:"Le fil G3Si1 (ER70S-6) contient du silicium et du manganèse principalement pour :",o:["Colorer le cordon","Désoxyder le bain de fusion","Augmenter la conductivité électrique","Réduire la vitesse de fusion"],a:1,e:"Si et Mn fixent l'oxygène du bain et limitent les porosités, en particulier avec le CO₂."},
+{c:0,l:2,q:"Le niveau de qualité le plus exigeant défini par ISO 5817 est :",o:["Le niveau D","Le niveau C","Le niveau B","Le niveau A"],a:2,e:"ISO 5817 définit trois niveaux d'acceptation des défauts : B (élevé), C (intermédiaire), D (modéré)."},
+{c:0,l:1,q:"La qualification des soudeurs pour les aciers est décrite par la norme :",o:["ISO 9001","ISO 9606-1","ISO 2553","ISO 6520"],a:1,e:"ISO 9606-1 (aciers), 9606-2 (aluminium). Elle définit le domaine de validité : procédé, épaisseur, position, type de joint…"},
+{c:0,l:3,q:"L'énergie de soudage (en kJ/mm) se calcule par :",o:["E = U × I × v","E = (U × I × 60) / (v × 1000) avec v en mm/min","E = U / (I × v)","E = I² × R × t"],a:1,e:"Énergie linéaire = tension × intensité / vitesse d'avance. Elle conditionne le cycle thermique et donc la ZAT."},
+{c:0,l:2,q:"Le soudage par résistance par points produit la chaleur par :",o:["Un arc électrique","L'effet Joule (Q = R·I²·t)","Une flamme","Un faisceau laser"],a:1,e:"La résistance de contact entre tôles et un fort courant (plusieurs kA) créent un noyau fondu sous l'effort des électrodes."},
+{c:0,l:1,q:"Le « coup d'arc » est :",o:["Un court-circuit du générateur","Une brûlure de la cornée par les UV de l'arc","Un amorçage raté","Un défaut interne du cordon"],a:1,e:"D'où le masque avec filtre adapté (teinte 10-13 selon intensité) et les écrans de protection pour les collègues."},
+
+// ---------- 1 CONTRÔLE QUALITÉ ----------
+{c:1,l:1,q:"Le ressuage (PT) détecte :",o:["Les défauts internes profonds","Les défauts débouchant en surface","La composition chimique","La dureté du cordon"],a:1,e:"Pénétrant, nettoyage, révélateur : le liquide « ressort » des fissures ouvertes en surface. Ne fonctionne pas sur défauts internes."},
+{c:1,l:1,q:"La magnétoscopie (MT) ne s'applique qu'aux matériaux :",o:["Ferromagnétiques","Inoxydables austénitiques","En aluminium","Non conducteurs"],a:0,e:"Le champ magnétique fuit au niveau du défaut et attire les particules. Un inox 304 (austénitique) ou l'aluminium ne se contrôlent pas en MT."},
+{c:1,l:2,q:"Le contrôle par ultrasons (UT) des soudures utilise des fréquences de l'ordre de :",o:["50 Hz","1 à 10 MHz","10 kHz","1 GHz"],a:1,e:"Plus la fréquence est élevée, plus la résolution est fine mais moins l'onde pénètre. On utilise couramment 2 à 5 MHz sur acier."},
+{c:1,l:2,q:"Sur un cliché radiographique (RT), une porosité apparaît :",o:["Comme une tache claire","Comme une tache sombre","Elle n'apparaît pas","Comme une ligne blanche"],a:1,e:"Moins de matière = plus de rayonnement transmis = zone plus noircie sur le film. Une inclusion de tungstène (dense) apparaît claire."},
+{c:1,l:3,q:"Les IQI (indicateurs de qualité d'image) servent en radiographie à :",o:["Repérer le sens de la pièce","Vérifier la sensibilité et la qualité du cliché","Mesurer l'épaisseur du cordon","Protéger le film"],a:1,e:"IQI à fils ou à gradins : le plus fin visible atteste la sensibilité obtenue (ISO 19232)."},
+{c:1,l:1,q:"Un pied à coulisse au 1/50 permet une lecture à :",o:["0,5 mm","0,1 mm","0,02 mm","0,001 mm"],a:2,e:"1/50 = 0,02 mm. Le pied à coulisse au 1/10 lit 0,1 mm et le micromètre 0,01 mm."},
+{c:1,l:1,q:"Une tolérance générale ISO 2768-m sur une cote de 100 mm vaut :",o:["± 0,1 mm","± 0,3 mm","± 0,8 mm","± 1,5 mm"],a:1,e:"Classe m (moyenne) : ± 0,1 (0,5 à 3), ± 0,2 (3 à 30), ± 0,3 (30 à 120), ± 0,5 (120 à 400), ± 0,8 (400 à 1000)."},
+{c:1,l:2,q:"Le caniveau (undercut) est :",o:["Une fissure longitudinale","Un sillon non rempli en bord de cordon","Un excès de pénétration","Une inclusion de laitier"],a:1,e:"Il crée un effet d'entaille néfaste en fatigue. Causes : intensité trop forte, angle de torche, vitesse trop élevée."},
+{c:1,l:2,q:"La norme qui classe et numérote les défauts des soudures est :",o:["ISO 6520-1","ISO 9001","ISO 2553","ISO 13920"],a:0,e:"ISO 6520-1 (groupes 100 fissures, 200 cavités, 300 inclusions, 400 manques de fusion/pénétration, 500 défauts de forme, 600 divers)."},
+{c:1,l:2,q:"La certification des agents de contrôle non destructif suit la norme :",o:["ISO 9606","ISO 9712","ISO 15614","ISO 3834"],a:1,e:"ISO 9712 (ex-COFREND) : niveaux 1, 2 et 3 par méthode (PT, MT, UT, RT, VT…)."},
+{c:1,l:2,q:"Une macrographie de soudure (coupe polie attaquée au Nital) permet d'observer :",o:["La composition chimique précise","La pénétration, la ZAT et les défauts internes de la section","La rugosité du cordon","La couleur du métal"],a:1,e:"Essai destructif de base d'une QMOS : on vérifie pénétration, forme, manque de fusion, porosités, et on mesure les zones."},
+{c:1,l:1,q:"L'essai de résilience Charpy mesure :",o:["La dureté","L'énergie absorbée à la rupture par choc (en joules)","L'allongement","La limite élastique"],a:1,e:"Éprouvette entaillée en V, mouton-pendule. Les valeurs chutent à basse température : d'où les nuances J0, J2, K2."},
+{c:1,l:2,q:"L'essai de pliage sur assemblage soudé vérifie :",o:["La résistance à la traction","La ductilité et l'absence de défauts en surface tendue","La résilience","La dureté HV"],a:1,e:"Pliage endroit, envers ou de côté à un rayon défini : aucune ouverture > 3 mm ne doit apparaître (ISO 5173)."},
+{c:1,l:2,q:"L'épreuve hydraulique d'un appareil à pression selon la directive DESP se fait généralement à :",o:["0,5 × PS","1,0 × PS","1,43 × PS","3 × PS"],a:2,e:"Pression d'épreuve ≥ 1,43 PS (ou 1,25 PS × rapport des contraintes admissibles). Jamais d'épreuve pneumatique sans analyse de risque."},
+{c:1,l:3,q:"Une AMDEC est :",o:["Une méthode de calcul de développé","Une analyse des modes de défaillance, de leurs effets et de leur criticité","Un essai de dureté","Une procédure d'étalonnage"],a:1,e:"On note gravité × occurrence × détection = criticité, pour prioriser les actions préventives sur un produit ou un procédé."},
+{c:1,l:1,q:"Étalonner un instrument de mesure, c'est :",o:["Le nettoyer","Le comparer à une référence traçable pour connaître son erreur","Le régler au hasard","Le remplacer"],a:1,e:"Étalonnage ≠ réglage. On établit la relation instrument/étalon (traçabilité COFRAC) puis on décide de l'ajuster ou non."},
+{c:1,l:2,q:"Le sigle VT en CND désigne :",o:["Le contrôle par vibrations","Le contrôle visuel","Le contrôle thermique","Le contrôle vidéo"],a:1,e:"Le contrôle visuel (ISO 17637) est le premier contrôle, avant tout autre CND : géométrie, aspect, caniveaux, projections…"},
+
+// ---------- 2 MISE EN FORME ----------
+{c:2,l:1,q:"Le retour élastique après pliage est plus important quand :",o:["Le rayon est petit et le matériau doux","Le matériau a une limite élastique élevée (inox, HLE)","L'épaisseur est très grande","On plie à chaud"],a:1,e:"Plus Re est élevée et plus le rapport rayon/épaisseur est grand, plus la tôle « revient ». On surplie pour compenser."},
+{c:2,l:1,q:"Pour un acier doux, le rayon intérieur minimal de pliage est de l'ordre de :",o:["0,1 × épaisseur","1 × épaisseur","5 × épaisseur","10 × épaisseur"],a:1,e:"Ri ≈ e pour les aciers ductiles ; 1,5 à 2 e pour l'inox ; 2 à 3 e pour les alliages d'aluminium durs."},
+{c:2,l:2,q:"Le coefficient K de position de la fibre neutre se situe généralement entre :",o:["0 et 0,1","0,3 et 0,5 de l'épaisseur selon le rapport r/e","0,8 et 1","Toujours 0,5"],a:1,e:"Pour r/e faible, K ≈ 0,33 ; pour r/e grand, K tend vers 0,5. Il sert au calcul du développé."},
+{c:2,l:2,q:"En pliage en l'air (sur presse plieuse), l'angle obtenu dépend :",o:["Uniquement de l'angle du vé","De la profondeur de descente du poinçon","De la couleur de la tôle","Du nombre de coups"],a:1,e:"La tôle ne touche que trois lignes : l'angle est piloté par la course. Le pliage en frappe (coining) impose l'angle de l'outillage."},
+{c:2,l:1,q:"Règle d'atelier : l'ouverture du vé pour une tôle d'épaisseur e (acier) est d'environ :",o:["2 × e","8 × e","20 × e","50 × e"],a:1,e:"V ≈ 6 à 8 e (jusqu'à 10-12 e en forte épaisseur). Un vé plus large réduit l'effort et le marquage mais agrandit le rayon."},
+{c:2,l:2,q:"Après roulage sur rouleuse pyramidale, la virole présente des méplats aux extrémités parce que :",o:["Les rouleaux sont usés","Les bords n'ont pas été croqués","La tôle est trop mince","On a roulé trop vite"],a:1,e:"Le croquage (préformage des bords sous presse ou sur rouleuse à pincement) évite les zones plates aux extrémités."},
+{c:2,l:3,q:"L'effort de pliage en l'air s'estime par :",o:["F = k × Rm × L × e² / V","F = Rm × V / e","F = L × e × Re","F = π × e × Rm"],a:0,e:"k ≈ 1,3 à 1,5 ; L = longueur pliée ; V = ouverture du vé. L'effort varie avec le carré de l'épaisseur."},
+{c:2,l:2,q:"Le rôle du serre-flan en emboutissage est :",o:["De couper la tôle","D'empêcher la formation de plis sur la collerette","De chauffer la tôle","D'augmenter le retour élastique"],a:1,e:"Un serre-flan trop faible = plis ; trop fort = striction et rupture du fond. On règle la pression et on lubrifie."},
+{c:2,l:2,q:"Pour cintrer un tube proprement (avec mandrin), le rayon de cintrage minimal courant est d'environ :",o:["0,5 × D","1,5 à 2 × D","5 × D","10 × D"],a:1,e:"Sous 1,5 D, risque d'ovalisation, de plis à l'intrados et d'amincissement excessif à l'extrados."},
+{c:2,l:1,q:"L'écrouissage est :",o:["Une oxydation de surface","Le durcissement d'un métal par déformation plastique à froid","Une fusion partielle","Un traitement chimique"],a:1,e:"Le pliage, le roulage et l'emboutissage écrouissent la matière : Re et dureté augmentent, l'allongement diminue."},
+{c:2,l:1,q:"Le formage à chaud d'un acier ordinaire se pratique vers :",o:["100 à 200 °C","400 à 500 °C","850 à 1000 °C (rouge cerise)","1500 °C"],a:2,e:"Dans le domaine austénitique, la tôle se déforme facilement sans écrouissage ; attention à la calamine et au retrait."},
+{c:2,l:1,q:"Pour calculer un développé de pièce pliée, on additionne :",o:["Les cotes extérieures sans correction","Les parties droites + la longueur de la fibre neutre dans chaque arrondi","Les parties droites uniquement","Le double des cotes intérieures"],a:1,e:"L = Σ droites + Σ (π × α/180 × (Ri + K·e)). Les logiciels de FAO appliquent des tables de perte au pli équivalentes."},
+{c:2,l:2,q:"Pour éviter les fissures au pliage d'une tôle laminée, l'axe du pli doit être de préférence :",o:["Parallèle au sens de laminage","Perpendiculaire au sens de laminage","À 45° du sens de laminage","Sans importance"],a:1,e:"Les fibres travaillent en traction à l'extérieur du pli : pli perpendiculaire aux fibres = moins de risque d'ouverture."},
+{c:2,l:2,q:"Pour réduire le marquage de la tôle par le vé, on peut :",o:["Utiliser un vé plus étroit","Utiliser un vé plus large ou un film de protection (uréthane)","Plier plus vite","Augmenter l'effort"],a:1,e:"Rayon d'arête du vé plus grand, vé large, films ou inserts polymère : indispensables sur inox brossé ou alu peint."},
+{c:2,l:1,q:"Un fond bombé « GRC » désigne un fond à :",o:["Grande Résistance Chimique","Grand Rayon de Carre","Gros Roulage Circulaire","Galbe Renforcé Court"],a:1,e:"GRC (grand rayon de carre) et PRC (petit rayon de carre) : normalisés NF E 81-100, utilisés sur réservoirs et appareils à pression."},
+{c:2,l:3,q:"Le coefficient d'anisotropie r de Lankford renseigne sur :",o:["La conductivité thermique","L'aptitude de la tôle à l'emboutissage profond","La dureté superficielle","Le retour élastique en roulage"],a:1,e:"r > 1 : la tôle s'amincit peu et se déforme dans le plan → bonne emboutissabilité (aciers IF, r ≈ 2)."},
+{c:2,l:2,q:"Le fluotournage / repoussage sert à réaliser :",o:["Des pièces prismatiques","Des pièces de révolution (cônes, fonds, bols)","Des tubes carrés","Des découpes"],a:1,e:"Une ébauche tourne sur un mandrin, un galet la déforme progressivement : très utilisé pour les fonds et cônes minces."},
+
+// ---------- 3 DESSIN TECHNIQUE ----------
+{c:3,l:1,q:"Sur un dessin, un trait mixte fin représente :",o:["Une arête cachée","Un axe de symétrie ou de révolution","Une hachure","Un contour vu"],a:1,e:"Trait mixte fin = axes ; interrompu fin = arêtes cachées ; continu fort = contours vus ; continu fin = cotes et hachures."},
+{c:3,l:2,q:"Selon ISO 2553, un symbole de soudure placé sur la ligne d'identification (pointillée) indique :",o:["Une soudure du côté de la flèche","Une soudure du côté opposé à la flèche","Une soudure sur chantier","Une soudure périphérique"],a:1,e:"Ligne de référence continue = côté flèche ; ligne pointillée = côté opposé. Symbole des deux côtés = soudure double."},
+{c:3,l:1,q:"Le triangle ▲ sur un symbole de soudure signifie :",o:["Soudure bout à bout en V","Soudure d'angle","Soudure par points","Soudure en U"],a:1,e:"On indique la gorge a (ex. a4) ou le côté z (ex. z6) avant le triangle. a ≈ 0,7 z."},
+{c:3,l:1,q:"Un petit cercle ○ à la jonction de la flèche et de la ligne de référence signifie :",o:["Soudure par points","Soudure périphérique (tout autour)","Soudure à contrôler","Soudure par résistance"],a:1,e:"Le cercle = soudure sur tout le pourtour. Le fanion (drapeau) = soudure réalisée sur chantier."},
+{c:3,l:1,q:"Le fanion (drapeau) sur un symbole de soudure indique :",o:["Une soudure sur chantier (site)","Une soudure à pénétration totale","Une soudure meulée","Une soudure interdite"],a:0,e:"Utile pour distinguer les soudures faites en atelier de celles réalisées au montage final."},
+{c:3,l:1,q:"Une échelle 2:1 signifie :",o:["Le dessin est deux fois plus petit que la pièce","Le dessin est deux fois plus grand que la pièce","La pièce est à taille réelle","La pièce est 20 fois plus petite"],a:1,e:"X:1 = agrandissement, 1:X = réduction. Les cotes inscrites restent toujours les cotes réelles de la pièce."},
+{c:3,l:1,q:"En projection européenne (méthode E), la vue de gauche se place :",o:["À gauche de la vue de face","À droite de la vue de face","Au-dessus de la vue de face","Sous la vue de face"],a:1,e:"Méthode E (1er dièdre) : la vue est placée à l'opposé du côté observé. En méthode A (américaine), c'est l'inverse."},
+{c:3,l:2,q:"Le symbole de tolérance géométrique ⏥ (parallélogramme) désigne :",o:["La planéité","La cylindricité","La circularité","La perpendicularité"],a:0,e:"⏤ rectitude, ⏥ planéité, ○ circularité, ⌭ cylindricité, ⟂ perpendicularité, ∥ parallélisme, ◎ coaxialité."},
+{c:3,l:2,q:"Le symbole ⟂ dans un cadre de tolérance désigne :",o:["Le parallélisme","La perpendicularité","La symétrie","Le battement"],a:1,e:"Tolérance d'orientation par rapport à une référence (A, B…) désignée par un triangle noirci."},
+{c:3,l:2,q:"L'indication « Ra 3,2 » sur un dessin concerne :",o:["Le rayon d'un congé","La rugosité arithmétique moyenne en µm","L'allongement","Une référence de matière"],a:1,e:"Ra = écart moyen arithmétique du profil. Ra 3,2 = usinage courant ; Ra 0,8 = rectification ; tôle laminée ≈ 6,3-12,5."},
+{c:3,l:2,q:"L'ajustement H7/g6 est :",o:["Un ajustement serré","Un ajustement avec jeu (glissant)","Un ajustement incertain","Une tolérance de rugosité"],a:1,e:"Alésage H (base) + arbre g : jeu faible garanti. H7/p6 = serré ; H7/k6 = incertain."},
+{c:3,l:1,q:"Sur un tube « DN 50 », DN signifie :",o:["Diamètre normal","Diamètre nominal","Densité nominale","Dimension nette"],a:1,e:"DN 50 correspond à un tube Ø ext 60,3 mm (série ISO/EN 10220). Le DN ne vaut ni le Ø ext ni le Ø int exact."},
+{c:3,l:2,q:"Le développement d'un cône (tronc de cône) se trace par la méthode :",o:["Des lignes parallèles","Du rayonnement (génératrices)","De la triangulation","Des sections"],a:1,e:"Les génératrices convergent au sommet : le développé est un secteur circulaire d'angle α = 360° × r/G."},
+{c:3,l:2,q:"Le développement d'un cylindre coupé en biais (onglet, culotte) se trace par :",o:["Le rayonnement","Les lignes parallèles","La triangulation","L'homothétie"],a:1,e:"Génératrices parallèles : on reporte sur la circonférence développée les hauteurs de chaque génératrice."},
+{c:3,l:3,q:"Un raccordement « carré vers rond » (pièce de transformation) se développe par :",o:["Les lignes parallèles","Le rayonnement","La triangulation","Il n'est pas développable"],a:2,e:"On décompose la surface en triangles dont on calcule les vraies grandeurs, puis on les reporte bout à bout."},
+{c:3,l:1,q:"Le format A3 mesure :",o:["210 × 297 mm","297 × 420 mm","420 × 594 mm","594 × 841 mm"],a:1,e:"A4 = 210×297, A3 = 297×420, A2 = 420×594, A1 = 594×841, A0 = 841×1189 (1 m²)."},
+{c:3,l:1,q:"Un trait interrompu fin représente :",o:["Un axe","Les arêtes cachées","Une coupe","Une cote"],a:1,e:"Les arêtes non visibles depuis le point de vue sont dessinées en trait interrompu fin."},
+{c:3,l:1,q:"Dans une nomenclature figurent au minimum :",o:["Le nom du soudeur","Repère, désignation, quantité, matière","Le prix de vente","La date de livraison"],a:1,e:"La nomenclature liste chaque composant repéré sur le plan d'ensemble avec sa matière et sa quantité (souvent aussi la masse)."},
+{c:3,l:1,q:"En perspective isométrique, les trois axes forment entre eux des angles de :",o:["90°","120°","45°","60°"],a:1,e:"Les trois axes sont équi-répartis (120°) et les longueurs sont toutes réduites du même coefficient (0,82 ou 1 en pratique)."},
+
+// ---------- 4 PROCÉDÉS DE DÉBIT ----------
+{c:4,l:1,q:"L'oxycoupage convient :",o:["À tous les métaux","Aux aciers au carbone et faiblement alliés uniquement","À l'aluminium","À l'inox austénitique"],a:1,e:"Le coupage par oxydation exige un métal dont l'oxyde fond plus bas que le métal : l'inox (oxyde de chrome) et l'alu (alumine) ne se coupent pas."},
+{c:4,l:2,q:"En oxycoupage, la flamme de chauffe sert à :",o:["Fondre le métal sur toute l'épaisseur","Porter le métal à sa température d'inflammation (~1300 °C) avant le jet d'oxygène de coupe","Refroidir la saignée","Souffler la calamine"],a:1,e:"C'est la combustion du fer par l'oxygène de coupe (réaction exothermique) qui coupe : la flamme n'amorce que le processus."},
+{c:4,l:1,q:"Le gaz plasmagène le plus courant pour couper l'acier au carbone au plasma est :",o:["L'acétylène","L'air comprimé (ou l'oxygène)","L'hélium","Le propane"],a:1,e:"Air ou O₂ sur acier carbone ; azote ou mélange Ar/H₂ pour l'inox et l'aluminium (arêtes propres)."},
+{c:4,l:2,q:"Le laser fibre émet à une longueur d'onde d'environ :",o:["10,6 µm","1,07 µm","532 nm","0,1 µm"],a:1,e:"CO₂ = 10,6 µm ; fibre/Nd:YAG ≈ 1,06-1,07 µm, mieux absorbée par les métaux réfléchissants (cuivre, laiton, alu)."},
+{c:4,l:2,q:"En découpe laser d'acier au carbone, l'oxygène comme gaz d'assistance :",o:["Refroidit la coupe","Apporte de l'énergie par réaction exothermique et permet de fortes épaisseurs","Évite toute oxydation","Réduit la vitesse"],a:1,e:"Coupe « oxydante » : chant oxydé (à décaper avant peinture/soudage). L'azote donne une coupe propre mais demande plus de puissance."},
+{c:4,l:1,q:"La découpe au jet d'eau abrasif travaille avec une pression d'environ :",o:["10 bar","400 bar","4000 bar","40 000 bar"],a:2,e:"3000 à 6000 bar avec du grenat comme abrasif. Aucune ZAT : idéal pour l'alu, l'inox, le titane, les composites."},
+{c:4,l:2,q:"Sur une cisaille guillotine, le jeu entre lames se règle à environ :",o:["0 %","5 à 10 % de l'épaisseur","50 % de l'épaisseur","Égal à l'épaisseur"],a:1,e:"Jeu trop grand = bavure et flexion ; trop faible = surcharge et usure des lames. Il se règle selon e et le matériau."},
+{c:4,l:1,q:"Une bavure importante après cisaillage vient surtout de :",o:["Lames trop tranchantes","Un jeu de lames trop grand ou des lames émoussées","Une tôle trop propre","Une vitesse de coupe trop lente"],a:1,e:"La bavure est un critère de contrôle : elle doit rester < 10 % de e en général et être orientée selon les besoins (pliage)."},
+{c:4,l:1,q:"Le « kerf » (saignée) désigne :",o:["Le nom du poinçon","La largeur de matière enlevée par la coupe","La vitesse de coupe","Le résidu de laitier"],a:1,e:"En programmation, on décale la trajectoire d'un demi-kerf pour obtenir la cote (compensation). Laser ≈ 0,2 mm, plasma 1,5-4 mm."},
+{c:4,l:1,q:"Le grignotage est :",o:["Un défaut de soudure","Une découpe par poinçonnages successifs et chevauchés","Un ébavurage","Un décapage chimique"],a:1,e:"Grignoteuse manuelle ou poinçonneuse CN : coups rapprochés pour suivre un contour quelconque."},
+{c:4,l:1,q:"Sur une scie à ruban, pour un matériau épais on choisit une denture :",o:["Plus fine","Plus grossière (moins de dents par pouce)","Identique","Sans dents"],a:1,e:"Règle : 3 dents minimum en prise dans la matière, sinon on casse des dents ; trop de dents en prise = bourrage et lenteur."},
+{c:4,l:2,q:"L'effort de poinçonnage se calcule par :",o:["F = périmètre × épaisseur × résistance au cisaillement","F = surface × Rm","F = Ø × Re","F = π × e²"],a:0,e:"Rcis ≈ 0,8 Rm. Un trou Ø20 dans S235 e=5 : 62,8 × 5 × 0,8×360 ≈ 90 kN."},
+{c:4,l:2,q:"Parmi ces procédés, celui qui ne génère aucune zone affectée thermiquement est :",o:["Le plasma","L'oxycoupage","Le laser","Le jet d'eau"],a:3,e:"Le jet d'eau coupe par abrasion à froid : aucune modification métallurgique, aucune déformation thermique."},
+{c:4,l:3,q:"Le plasma haute définition se distingue du plasma conventionnel par :",o:["Une saignée plus large","Un angle de dépouille plus faible (0 à 3°) et une meilleure précision","L'absence de gaz","Une vitesse plus lente"],a:1,e:"Tuyère à vortex et arc très concentré : qualité proche du laser sur 3 à 40 mm."},
+{c:4,l:1,q:"Pour tronçonner de l'inox à la meuleuse, on utilise un disque :",o:["Standard acier","Sans fer, sans soufre, sans chlore (marqué INOX)","En bois","Diamanté béton"],a:1,e:"Les contaminants ferreux du disque provoqueraient des piqûres de corrosion sur l'inox."},
+{c:4,l:2,q:"La difficulté principale de la découpe laser de l'aluminium est :",o:["Sa dureté","Sa réflectivité et sa conductivité thermique élevées","Sa toxicité","Son magnétisme"],a:1,e:"Le faisceau est en partie réfléchi et la chaleur se dissipe vite : puissance élevée et azote sous forte pression nécessaires."},
+{c:4,l:1,q:"L'imbrication (nesting) consiste à :",o:["Empiler les tôles","Placer les pièces sur la tôle pour minimiser les chutes","Nettoyer la table de découpe","Souder les chutes"],a:1,e:"Le taux d'utilisation de la tôle est un enjeu économique majeur en découpe CN : 70-85 % est courant."},
+{c:4,l:1,q:"Une flamme oxyacétylénique neutre correspond à un rapport O₂/C₂H₂ d'environ :",o:["0,5","1 à 1,2","3","5"],a:1,e:"Dard net et court, sans aigrette. Flamme carburante (excès C₂H₂) = aigrette ; oxydante (excès O₂) = dard pointu, sifflement."},
+
+// ---------- 5 MÉTALLURGIE ----------
+{c:5,l:1,q:"Dans la désignation S235JR, le nombre 235 indique :",o:["La résistance à la traction en MPa","La limite élastique minimale en MPa","La dureté Brinell","La teneur en carbone"],a:1,e:"S = acier de construction, 235 = Re min (MPa) pour e ≤ 16 mm. Rm ≈ 360-510 MPa."},
+{c:5,l:2,q:"Le suffixe JR de S235JR garantit :",o:["Une résilience de 27 J à +20 °C","Une résilience de 27 J à −20 °C","Une résilience de 40 J à 0 °C","Une résistance à la corrosion"],a:0,e:"J = 27 J, K = 40 J ; R = +20 °C, 0 = 0 °C, 2 = −20 °C. S355J2 = 27 J à −20 °C."},
+{c:5,l:1,q:"Un acier est un alliage fer-carbone contenant moins de :",o:["0,2 % de carbone","2,1 % de carbone","6 % de carbone","10 % de carbone"],a:1,e:"Au-delà de 2,11 % C (point de saturation de l'austénite), on parle de fonte."},
+{c:5,l:1,q:"L'inox 304 (X5CrNi18-10) a une structure :",o:["Ferritique","Martensitique","Austénitique","Duplex"],a:2,e:"18 % Cr, 8-10 % Ni : amagnétique, très ductile, soudable, mais dilatation élevée et sensibilisation possible en ZAT."},
+{c:5,l:2,q:"Pour être « inoxydable », un acier doit contenir au minimum :",o:["1 % de chrome","10,5 % de chrome","18 % de nickel","30 % de chrome"],a:1,e:"Le chrome forme une couche d'oxyde passive auto-régénérante. Le nickel stabilise l'austénite, le molybdène résiste aux chlorures."},
+{c:5,l:2,q:"Un acier inoxydable duplex présente une structure :",o:["100 % ferrite","100 % austénite","Mixte ferrite + austénite","Martensite revenue"],a:2,e:"≈ 50/50 : Re double de l'austénitique et meilleure tenue à la corrosion sous contrainte, mais soudage à énergie contrôlée."},
+{c:5,l:1,q:"La trempe d'un acier consiste à :",o:["Chauffer lentement puis laisser refroidir au four","Chauffer au-dessus d'Ac3 puis refroidir rapidement pour obtenir de la martensite","Déformer à froid","Recouvrir de zinc"],a:1,e:"La martensite est dure mais fragile : on la « revient » ensuite. Il faut assez de carbone (> 0,3 %) pour tremper."},
+{c:5,l:1,q:"Le revenu, réalisé après la trempe, a pour but de :",o:["Augmenter encore la dureté","Réduire la fragilité et les contraintes internes","Rendre l'acier inoxydable","Souder plus facilement"],a:1,e:"Chauffage entre 150 et 650 °C selon le compromis dureté/ténacité recherché."},
+{c:5,l:2,q:"Le recuit de normalisation (Ac3 + 50 °C puis refroidissement à l'air) permet :",o:["De durcir la surface","D'affiner le grain et d'homogénéiser la structure","De colorer l'acier","D'éliminer le carbone"],a:1,e:"Souvent prescrit après forgeage, laminage à chaud ou soudage de fortes épaisseurs pour retrouver une structure fine et régulière."},
+{c:5,l:1,q:"La ZAT (zone affectée thermiquement) est :",o:["La zone fondue du cordon","Une zone non fondue dont la microstructure a été modifiée par le cycle thermique","La zone où l'on pose la masse","La zone de meulage"],a:1,e:"Grossissement du grain, trempe ou adoucissement selon l'acier : c'est souvent là que la dureté est la plus élevée."},
+{c:5,l:3,q:"La sensibilisation (corrosion intergranulaire) des inox austénitiques est due à :",o:["Une précipitation de carbures de chrome aux joints de grains entre 450 et 850 °C","Un excès de nickel","Un refroidissement trop rapide","La présence d'aluminium"],a:0,e:"Le chrome appauvri autour des carbures ne protège plus. Remèdes : nuances bas carbone (304L, 316L) ou stabilisées (321 Ti, 347 Nb)."},
+{c:5,l:2,q:"L'alliage d'aluminium 5083 appartient à la famille :",o:["Al-Cu (2000), traitable thermiquement","Al-Mg (5000), durcissable par écrouissage seulement","Al-Zn (7000), aéronautique","Al-Si (4000), de fonderie"],a:1,e:"Très utilisé en construction navale et cuves : soudable, bonne tenue marine, mais adoucissement de la ZAT si écroui (H111, H321)."},
+{c:5,l:2,q:"L'alliage 6082-T6 est un :",o:["Al-Mg-Si trempé et revenu (durcissement structural)","Aluminium pur","Al-Cu recuit","Al-Mn écroui"],a:0,e:"Série 6000 : Re élevée à l'état T6, mais la ZAT perd 30 à 50 % de ses propriétés au soudage."},
+{c:5,l:1,q:"Le module d'Young de l'acier vaut environ :",o:["70 GPa","110 GPa","210 GPa","400 GPa"],a:2,e:"Acier ≈ 210 GPa, alu ≈ 70 GPa, titane ≈ 110 GPa, cuivre ≈ 120 GPa. Il ne change pas avec la nuance de l'acier."},
+{c:5,l:1,q:"La masse volumique de l'acier est d'environ :",o:["2,7 kg/dm³","7,85 kg/dm³","8,9 kg/dm³","11,3 kg/dm³"],a:1,e:"Alu 2,7 ; acier 7,85 ; inox 7,9-8 ; cuivre 8,9 ; plomb 11,3. Utile pour estimer les masses en atelier."},
+{c:5,l:2,q:"Dans P265GH, les lettres GH signifient :",o:["Galvanisé à chaud","Acier pour appareils à pression utilisable à haute température","Grande dureté","Grain homogène"],a:1,e:"P = pression, 265 = Re min, G = autres caractéristiques, H = haute température (EN 10028-2). Nuance courante de chaudronnerie."},
+{c:5,l:3,q:"Sur le diagramme fer-carbone, la perlite est :",o:["Une solution solide de carbone dans le fer γ","Un mélange lamellaire de ferrite et de cémentite (0,77 % C)","Du carbone libre","De la martensite revenue"],a:1,e:"Constituant eutectoïde formé à 727 °C. Un acier à 0,77 % C recuit est 100 % perlitique."},
+{c:5,l:2,q:"L'essai de dureté Vickers utilise :",o:["Une bille en acier","Une pyramide en diamant à base carrée (136°)","Un cône diamant à 120°","Un marteau"],a:1,e:"HV : Vickers (pyramide), HB : Brinell (bille), HRC : Rockwell C (cône). HV convient à toutes les duretés et aux zones fines (ZAT)."},
+{c:5,l:2,q:"Le coefficient de dilatation thermique de l'inox austénitique par rapport à l'acier au carbone est :",o:["Deux fois plus faible","Sensiblement égal","Environ 1,5 fois plus grand (≈ 16-17 × 10⁻⁶/°C)","Nul"],a:2,e:"Acier ≈ 12, inox austénitique ≈ 16-17, aluminium ≈ 23 × 10⁻⁶/°C : l'inox et l'alu se déforment davantage au soudage."},
+{c:5,l:1,q:"La fonte contient une teneur en carbone :",o:["Inférieure à 0,1 %","Entre 0,3 et 1 %","Supérieure à 2,1 % (généralement 2 à 4 %)","Nulle"],a:2,e:"Fonte grise (graphite lamellaire) : fragile, difficile à souder. Fonte GS (graphite sphéroïdal) : plus ductile."},
+
+// ---------- 6 DÉFI CHAUDRONNIER ----------
+{c:6,l:2,q:"Développé d'une virole Ø extérieur 1000 mm, épaisseur 10 mm (fibre neutre à mi-épaisseur) :",o:["3000 mm","3110 mm","3142 mm","3173 mm"],a:1,e:"L = π × (D ext − e) = π × 990 ≈ 3110 mm. Sur le diamètre extérieur on aurait 3142 mm : 32 mm d'erreur !"},
+{c:6,l:1,q:"Volume d'un réservoir cylindrique de 1 m de diamètre intérieur et 2 m de long (hors fonds) :",o:["0,79 m³","1,57 m³","3,14 m³","6,28 m³"],a:1,e:"V = π × D²/4 × L = 0,785 × 2 = 1,57 m³ soit 1570 litres."},
+{c:6,l:1,q:"10 bar correspondent à :",o:["0,1 MPa","1 MPa","10 MPa","100 MPa"],a:1,e:"1 bar = 0,1 MPa = 10⁵ Pa. 10 bar = 1 MPa = 1 N/mm²."},
+{c:6,l:3,q:"Contrainte circonférentielle dans une virole mince sous pression intérieure P :",o:["σ = P × D / (2 × e)","σ = P × e / D","σ = P × D / (4 × e)","σ = 2 × P × D × e"],a:0,e:"Formule des chaudières. La contrainte longitudinale vaut la moitié : P·D/(4e). C'est pourquoi une virole éclate suivant sa génératrice."},
+{c:6,l:3,q:"L'épaisseur minimale d'une virole selon le CODAP se calcule par :",o:["e = P × D / (2 f z − P)","e = P × D × f","e = f / (P × D)","e = D / P"],a:0,e:"f = contrainte admissible, z = coefficient de joint soudé (1 si contrôle RT 100 %). On ajoute ensuite les surépaisseurs (corrosion, tolérance)."},
+{c:6,l:1,q:"Masse d'une tôle acier 2000 × 1000 × 5 mm :",o:["39 kg","78,5 kg","157 kg","785 kg"],a:1,e:"V = 2 × 1 × 0,005 = 0,01 m³ × 7850 kg/m³ = 78,5 kg. Règle rapide : 7,85 kg par m² et par mm."},
+{c:6,l:1,q:"Les fumées de soudage de l'inox contiennent du chrome hexavalent (Cr VI), classé :",o:["Sans danger","Irritant léger","Cancérogène : aspiration à la source obligatoire","Explosif"],a:2,e:"Cr VI et nickel : cancérogènes avérés. Torche aspirante ou bras d'aspiration, jamais de soudage inox sans captage."},
+{c:6,l:1,q:"Un permis de feu est :",o:["Une autorisation de fumer","Une autorisation écrite avant travaux par points chauds hors atelier","Un diplôme de soudeur","Un contrôle des extincteurs"],a:1,e:"Il fixe les mesures : éloignement des combustibles, extincteur, surveillance 2 h après la fin des travaux."},
+{c:6,l:1,q:"Selon EN 1089-3, l'ogive d'une bouteille d'acétylène est de couleur :",o:["Blanche","Marron","Vert foncé","Noire"],a:1,e:"Acétylène = marron, oxygène = blanc, argon = vert foncé, azote = noir, CO₂ = gris, mélanges Ar/CO₂ = vert clair."},
+{c:6,l:2,q:"Dans la directive DESP (2014/68/UE), la catégorie d'un appareil dépend de :",o:["Sa couleur","Du produit PS × V (ou PS × DN) et de la dangerosité du fluide","De son poids","Du nombre de soudures"],a:1,e:"Catégories I à IV : plus le produit PS·V est élevé et le fluide dangereux, plus les exigences (organisme notifié, CND) sont fortes."},
+{c:6,l:1,q:"Masse d'une tôle aluminium 1 m² d'épaisseur 3 mm :",o:["2,7 kg","8,1 kg","23,5 kg","27 kg"],a:1,e:"1 × 0,003 = 0,003 m³ × 2700 = 8,1 kg. Trois fois plus léger que l'acier à volume égal."},
+{c:6,l:2,q:"Pour une élingue à 2 brins ouverts à 60°, le coefficient de mode d'élingage vaut environ :",o:["2","1,73","1,41","1"],a:1,e:"Charge admissible = CMU d'un brin × coefficient : 1,73 à 60°, 1,41 à 90°, 1 à 120°. Jamais au-delà de 120°."},
+{c:6,l:2,q:"La norme ISO 13920 définit :",o:["Les tolérances générales des constructions soudées","Les symboles de soudure","La qualification des soudeurs","Les gaz de protection"],a:0,e:"Classes A à D pour les longueurs et angles, E à H pour rectitude et planéité. Très utilisée en chaudronnerie et charpente."},
+{c:6,l:1,q:"Un « piquage » sur une virole est :",o:["Un défaut de corrosion","Une tubulure soudée sur la paroi pour un raccordement","Un point de soudure","Un outil de traçage"],a:1,e:"Le piquage exige un chanfrein et souvent un renfort (plaque de renfort ou tubulure épaissie) selon le CODAP."},
+{c:6,l:1,q:"Le trusquin sert à :",o:["Mesurer un angle","Tracer des lignes parallèles à une surface de référence","Contrôler une soudure","Couper la tôle"],a:1,e:"Sur marbre, il permet de tracer à hauteur constante. Le compas à pointes sèches, l'équerre et la pointe à tracer complètent la panoplie."},
+{c:6,l:1,q:"Un pointage (tack) doit être :",o:["Le plus long possible","Court, régulièrement espacé, sain, et meulé ou refondu si nécessaire","Réalisé après le soudage","Réalisé sans gaz"],a:1,e:"Un pointage fissuré ou poreux se retrouve dans le cordon final. Sur inox, il faut aussi le protéger de l'oxydation."},
+{c:6,l:1,q:"L'ordre logique de fabrication en chaudronnerie est :",o:["Soudage → débit → traçage → contrôle","Traçage/débit → mise en forme → assemblage/pointage → soudage → contrôle/finition","Contrôle → soudage → pliage → débit","Peinture → soudage → débit"],a:1,e:"La gamme de fabrication suit cette logique ; les CND et la finition (meulage, décapage, peinture) clôturent."},
+{c:6,l:2,q:"Le Ø extérieur d'un tube DN 100 (série ISO) est :",o:["100 mm","101,6 mm","114,3 mm","108 mm"],a:2,e:"DN 25 = 33,7 ; DN 50 = 60,3 ; DN 80 = 88,9 ; DN 100 = 114,3 ; DN 150 = 168,3 ; DN 200 = 219,1 mm."},
+{c:6,l:3,q:"Pour compenser le retrait transversal d'une soudure bout à bout en V sur forte épaisseur, on peut :",o:["Souder plus vite sans bridage","Prédéformer (anti-déformation) et alterner les passes de chaque côté (X)","Refroidir à l'eau","Supprimer le chanfrein"],a:1,e:"Chanfrein en X symétrique, séquence de passes équilibrée, bridage raisonné et prédéformation : les outils classiques anti-déformation."},
+{c:6,l:2,q:"Une PS (pression maximale admissible) de 16 bar sur un réservoir de 500 L donne PS × V =",o:["80 bar·L","800 bar·L","8000 bar·L","32 bar·L"],a:2,e:"16 × 500 = 8000 bar·L : pour un gaz du groupe 2, cet appareil relève de la catégorie III de la DESP."},
+];
+
+
+const CATS=[
+ {n:"Soudage",s:"Soudage",c:"var(--c0)",raw:"#f07f1f",dark:false},
+ {n:"Contrôle qualité",s:"Contrôle",c:"var(--c1)",raw:"#2f7fd6",dark:false},
+ {n:"Mise en forme",s:"Mise en forme",c:"var(--c2)",raw:"#2fa66f",dark:false},
+ {n:"Dessin technique",s:"Dessin",c:"var(--c3)",raw:"#6c5ce7",dark:false},
+ {n:"Procédés de débit",s:"Débit",c:"var(--c4)",raw:"#d8433b",dark:false},
+ {n:"Métallurgie",s:"Métallurgie",c:"var(--c5)",raw:"#e5b41c",dark:true},
+ {n:"Défi chaudronnier",s:"Défi",c:"var(--c6)",raw:"#f4f4f2",dark:true}
+];
+const LETTERS=["A","B","C","D"];
+const TEAM_COLORS=["#ff5da2","#2ed3e0","#b4f04a","#c084fc","#ffb020","#8be9fd"];
+const DEFAULT_TEAMS=["Équipe Enclume","Équipe Chalumeau","Équipe Presse"];
+const N=36;
+const SPECIAL=new Set([3,15,27]);
+const WEDGE_AT=i=>i%6===0;
+function catOf(i){ if(SPECIAL.has(i)) return 6; return i%6; }
+const $=s=>document.querySelector(s);
+const el=(t,a={},...ch)=>{const e=document.createElement(t);for(const k in a){if(k==="class")e.className=a[k];else if(k.startsWith("on"))e.addEventListener(k.slice(2),a[k]);else e.setAttribute(k,a[k]);}for(const c of ch){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const store={get(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+
+// landing categories
+CATS.forEach((c,i)=>$("#landingCats").append(el("span",{class:"cat","data-c":i,style:"background:"+c.c},c.n)));
+
+function show(id){["landing","host","player"].forEach(s=>$("#"+s).classList.toggle("hidden",s!==id));}
+
+// ============ RÉSEAU pair-à-pair (PeerJS / WebRTC) ============
+const PEER_OPTS={debug:0,config:{iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]}};
+const peerId=code=>"trivial-chaudro-"+code.toLowerCase();
+
+// =====================================================================
+// HOST
+// =====================================================================
+const H={
+  st:null, timerId:null, remaining:0, joined:null, hb:null, answers:{}, // answers[peer]={team,choice}
+  settings:{levels:[1,2,3],timer:30,win:6}
+};
+function newCode(){const a="ABCDEFGHJKMNPQRSTUVWXYZ",d="23456789";return a[Math.floor(Math.random()*a.length)]+a[Math.floor(Math.random()*a.length)]+a[Math.floor(Math.random()*a.length)]+d[Math.floor(Math.random()*d.length)];}
+
+function setupTeamsUI(names){
+  const box=$("#setupTeams");box.innerHTML="";
+  names.forEach((n,i)=>{
+    const r=el("div",{class:"row"},el("span",{class:"tok",style:"background:"+TEAM_COLORS[i]+";width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;font-weight:800"},String(i+1)),
+      el("input",{value:n,maxlength:"22","data-i":i}),
+      names.length>2?el("button",{class:"btn sec",onclick:()=>{names.splice(i,1);setupTeamsUI(names);}},"✕"):null);
+    box.append(r);
+  });
+  $("#addTeam").disabled=names.length>=6;
+  $("#addTeam").onclick=()=>{ if(names.length<6){names.push("Équipe "+(names.length+1));setupTeamsUI(names);} };
+}
+let setupNames=DEFAULT_TEAMS.slice();
+
+$("#goHost").onclick=()=>{ show("host"); setupTeamsUI(setupNames); const saved=store.get("tc-host"); $("#resumeGame").classList.toggle("hidden",!(saved&&saved.st&&saved.st.phase!=="won")); initHostRoom(saved?saved.code:null); };
+
+function initHostRoom(code){
+  H.code=code||newCode();
+  $("#roomCode").textContent=H.code.split("").join(" ");
+  const base=location.href.split("?")[0].split("#")[0];
+  $("#shareUrl").value=base;
+  $("#shareUrl").oninput=drawQR; drawQR();
+  if(!window.Peer){ $("#hostStatus").innerHTML='Direct : <b class="off">indisponible</b> (bibliothèque réseau non chargée) — jeu au tableau avec réponses orales.'; return; }
+  connectHostRoom();
+}
+function drawQR(){
+  const url=$("#shareUrl").value.trim()+(($("#shareUrl").value.includes("?"))?"&":"?")+"room="+H.code;
+  const box=$("#qr");box.innerHTML="";
+  if(window.QRCode){ new QRCode(box,{text:url,width:132,height:132,correctLevel:QRCode.CorrectLevel.M}); }
+  else box.append(el("span",{class:"small"},url));
+}
+function connectHostRoom(){
+  if(H.peer){try{H.peer.destroy();}catch(e){}}
+  H.conns={}; // id -> {conn,name,team}
+  const setSt=(cls,txt)=>{$("#hostStatus").innerHTML='Direct : <b class="'+cls+'">'+txt+'</b>';};
+  setSt("off","connexion…");
+  H.peer=new Peer(peerId(H.code),PEER_OPTS);
+  H.peer.on("open",()=>setSt("on","en ligne — les apprentis scannent le QR et saisissent le code "+H.code));
+  H.peer.on("disconnected",()=>{setSt("off","reconnexion…"); try{H.peer.reconnect();}catch(e){}});
+  H.peer.on("error",e=>{ if(e.type==="unavailable-id"){ H.code=newCode(); $("#roomCode").textContent=H.code.split("").join(" "); drawQR(); save(); connectHostRoom(); } else setSt("off","erreur réseau ("+e.type+")"); });
+  H.peer.on("connection",conn=>{
+    H.conns[conn.peer]={conn,name:null,team:null};
+    conn.on("open",()=>{ if(H.st) emitState(); });
+    conn.on("data",d=>onPlayerMsg(conn.peer,d));
+    conn.on("close",()=>{ delete H.conns[conn.peer]; renderRoster(); });
+    conn.on("error",()=>{ delete H.conns[conn.peer]; renderRoster(); });
+  });
+  if(H.hb)clearInterval(H.hb);
+  H.hb=setInterval(()=>{ if(H.st) emitState(); },4000);
+}
+function onPlayerMsg(id,d){
+  if(!d||typeof d!=="object")return; const c=H.conns[id]; if(!c)return;
+  switch(d.t){
+    case "hello": c.name=String(d.name||"").slice(0,20); renderRoster(); if(H.st) emitState(); break;
+    case "team": { const t=Number(d.team); c.team=(Number.isInteger(t)&&H.st&&H.st.teams[t])?t:null; renderRoster(); break; }
+    case "roll": if(H.st&&H.st.phase==="roll"&&teamOfPeer(id)===H.st.turn) rollDice(); break;
+    case "choose": { if(!H.st||H.st.phase!=="move"||teamOfPeer(id)!==H.st.turn)return; const p=Number(d.pos); if(H.st.moveOptions.includes(p)) moveTo(p); break; }
+    case "answer": { if(!H.st||H.st.phase!=="question")return; const t=teamOfPeer(id); if(t==null)return; const ch=Number(d.choice); if(!(ch>=0&&ch<4))return; if(H.answers[id])return; H.answers[id]={team:t,choice:ch}; renderQuestion(); checkAutoValidate(); break; }
+  }
+}
+function broadcast(msg){ for(const id in (H.conns||{})){ const c=H.conns[id].conn; if(c&&c.open){ try{c.send(msg);}catch(e){} } } }
+function peersList(){ return Object.values(H.conns||{}).filter(c=>c.name).map(c=>({presence:{name:c.name,team:c.team}})); }
+function teamOfPeer(id){ const c=H.conns&&H.conns[id]; return c&&c.team!=null?c.team:null; }
+function renderRoster(){
+  const box=$("#roster");box.innerHTML="";
+  const ps=peersList();
+  if(!ps.length){ box.append(el("span",{class:"small muted"},"Aucun apprenti connecté pour l'instant.")); return; }
+  ps.forEach(p=>{ const t=p.presence.team; const col=(H.st&&t!=null&&H.st.teams[t])?H.st.teams[t].color:"var(--line)"; box.append(el("span",{class:"chip"},el("i",{style:"background:"+col}),p.presence.name)); });
+}
+
+function pool(){ const lv=H.settings.levels; return QUESTIONS.map((q,i)=>({...q,id:i})).filter(q=>lv.includes(q.l)); }
+function pickQuestion(cat){
+  let cand=pool().filter(q=>q.c===cat&&!H.st.used.includes(q.id));
+  if(!cand.length){ H.st.used=H.st.used.filter(id=>QUESTIONS[id].c!==cat); cand=pool().filter(q=>q.c===cat); }
+  if(!cand.length){ cand=QUESTIONS.map((q,i)=>({...q,id:i})).filter(q=>q.c===cat); }
+  const q=cand[Math.floor(Math.random()*cand.length)];
+  H.st.used.push(q.id);
+  return q;
+}
+
+$("#startGame").onclick=()=>{
+  const names=[...document.querySelectorAll("#setupTeams input")].map(i=>i.value.trim()||"Équipe");
+  H.settings.levels=[...document.querySelectorAll(".lvl:checked")].map(i=>Number(i.value)); if(!H.settings.levels.length)H.settings.levels=[1,2,3];
+  H.settings.timer=Number($("#timerSel").value); H.settings.win=Number($("#winSel").value);
+  H.st={teams:names.map((n,i)=>({name:n,color:TEAM_COLORS[i],pos:0,wedges:[false,false,false,false,false,false],bonus:0})),turn:0,phase:"roll",dice:null,moveOptions:[],q:null,used:[],winner:null,epoch:1};
+  startPlay();
+};
+$("#resumeGame").onclick=()=>{ const s=store.get("tc-host"); if(!s)return; H.st=s.st; H.settings=s.settings||H.settings; if(H.st.phase==="question"){H.st.phase="roll";H.st.q=null;} startPlay(); };
+$("#restartBtn").onclick=()=>{ if(confirm("Terminer cette partie et revenir aux réglages ?")){ store.del("tc-host"); H.st=null; $("#play").classList.add("hidden"); $("#board").classList.add("hidden"); $("#setup").classList.remove("hidden"); } };
+
+function startPlay(){ $("#setup").classList.add("hidden"); $("#board").classList.remove("hidden"); $("#play").classList.remove("hidden"); buildBoard(); render(); }
+
+function save(){ store.set("tc-host",{st:H.st,settings:H.settings,code:H.code}); }
+function emitState(){
+  if(!H.peer||!H.st)return;
+  const s=H.st, pub={t:"state",epoch:s.epoch,phase:s.phase,turn:s.turn,dice:s.dice,moveOptions:s.moveOptions,winner:s.winner,remaining:H.remaining,timer:H.settings.timer,
+    teams:s.teams.map(t=>({name:t.name,color:t.color,pos:t.pos,w:t.wedges.filter(Boolean).length,bonus:t.bonus})),
+    q:s.q?{cat:s.q.c,q:s.q.q,o:s.q.o,l:s.q.l}:null,
+    reveal:s.phase==="reveal"||s.phase==="wedge"?{a:s.q.a,chosen:s.chosen,ok:s.ok,e:s.q.e}:null,
+    answered:Object.keys(H.answers)};
+  broadcast(pub);
+}
+function render(){ renderTeams(); renderBoard(); renderControls(); renderQuestion(); renderRoster(); save(); emitState(); }
+
+// ---- board SVG ----
+const svgNS="http://www.w3.org/2000/svg";
+function polar(r,a){return [360+r*Math.cos(a),360+r*Math.sin(a)];}
+function sectorPath(i,r1,r2){
+  const a0=(i/N)*2*Math.PI-Math.PI/2, a1=((i+1)/N)*2*Math.PI-Math.PI/2, g=0.012;
+  const [x1,y1]=polar(r2,a0+g),[x2,y2]=polar(r2,a1-g),[x3,y3]=polar(r1,a1-g),[x4,y4]=polar(r1,a0+g);
+  return `M${x1},${y1} A${r2},${r2} 0 0 1 ${x2},${y2} L${x3},${y3} A${r1},${r1} 0 0 0 ${x4},${y4} Z`;
+}
+function buildBoard(){
+  const svg=$("#board"); svg.innerHTML="";
+  const mk=(t,a)=>{const e=document.createElementNS(svgNS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  // plate + bolt ring
+  svg.append(mk("circle",{cx:360,cy:360,r:352,fill:"#2a3440"}));
+  svg.append(mk("circle",{cx:360,cy:360,r:344,fill:"none",stroke:"#3b4756","stroke-width":2}));
+  for(let i=0;i<N;i++){
+    const c=catOf(i), wedge=WEDGE_AT(i), r1=wedge?232:250, r2=336;
+    const g=mk("g",{class:"sector","data-i":i}); g.style.cursor="default";
+    g.append(mk("path",{d:sectorPath(i,r1,r2),fill:CATS[c].raw,class:"ring",stroke:"#2a3440","stroke-width":1.5}));
+    const a=((i+.5)/N)*2*Math.PI-Math.PI/2, [tx,ty]=polar((r1+r2)/2,a);
+    if(wedge){ const t=mk("text",{x:tx,y:ty+8,"text-anchor":"middle","font-size":"24","font-family":"Barlow Condensed","font-weight":"800",fill:CATS[c].dark?"#1c2128":"#fff"}); t.textContent="◕"; g.append(t); }
+    if(SPECIAL.has(i)){ const t=mk("text",{x:tx,y:ty+9,"text-anchor":"middle","font-size":"26","font-family":"Barlow Condensed","font-weight":"800",fill:"#1c2128"}); t.textContent="★"; g.append(t); }
+    g.addEventListener("click",()=>{ if(H.st&&H.st.phase==="move"&&H.st.moveOptions.includes(i)) moveTo(i); });
+    svg.append(g);
+  }
+  // center
+  svg.append(mk("circle",{cx:360,cy:360,r:212,fill:"#222831",stroke:"#3b4756","stroke-width":3}));
+  const title=mk("text",{x:360,y:300,"text-anchor":"middle","font-size":"46","font-family":"Barlow Condensed","font-weight":"800",fill:"#eef1f4"}); title.textContent="TRIVIAL CHAUDRONNERIE"; svg.append(title);
+  const sub=mk("text",{x:360,y:326,"text-anchor":"middle","font-size":"17","font-family":"Barlow","letter-spacing":"2",fill:"#a9b2bd"}); sub.textContent="BTS CRCI"; svg.append(sub);
+  const cur=mk("text",{id:"centerTurn",x:360,y:372,"text-anchor":"middle","font-size":"34","font-family":"Barlow Condensed","font-weight":"700",fill:"#fff"}); svg.append(cur);
+  const cur2=mk("text",{id:"centerInfo",x:360,y:404,"text-anchor":"middle","font-size":"20","font-family":"Barlow",fill:"#a9b2bd"}); svg.append(cur2);
+  // legend inside center
+  CATS.forEach((c,i)=>{ const y=440+i*22, x=250; svg.append(mk("rect",{x,y:y-12,width:14,height:14,rx:3,fill:c.raw})); const t=mk("text",{x:x+22,y,"font-size":"17","font-family":"Barlow",fill:"#eef1f4"}); t.textContent=c.n+(i===6?" ★":""); svg.append(t); });
+  svg.append(mk("g",{id:"tokens"}));
+}
+function renderBoard(){
+  const s=H.st; if(!s)return;
+  document.querySelectorAll("#board .sector").forEach(g=>g.classList.toggle("target",s.phase==="move"&&s.moveOptions.includes(Number(g.dataset.i))));
+  const tk=$("#tokens"); tk.innerHTML="";
+  const byPos={}; s.teams.forEach((t,i)=>{(byPos[t.pos]=byPos[t.pos]||[]).push(i);});
+  for(const pos in byPos){ byPos[pos].forEach((ti,k,arr)=>{
+    const a=((Number(pos)+.5)/N)*2*Math.PI-Math.PI/2; const off=(k-(arr.length-1)/2)*24; const [x,y]=polar(293,a);
+    const px=x+off*Math.cos(a+Math.PI/2), py=y+off*Math.sin(a+Math.PI/2);
+    const g=document.createElementNS(svgNS,"g");
+    const c=document.createElementNS(svgNS,"circle"); c.setAttribute("cx",px);c.setAttribute("cy",py);c.setAttribute("r",15);c.setAttribute("fill",s.teams[ti].color);c.setAttribute("stroke","#1c2128");c.setAttribute("stroke-width",ti===s.turn?4:2);
+    const t=document.createElementNS(svgNS,"text"); t.setAttribute("x",px);t.setAttribute("y",py+6);t.setAttribute("text-anchor","middle");t.setAttribute("font-size","17");t.setAttribute("font-family","Barlow Condensed");t.setAttribute("font-weight","800");t.setAttribute("fill","#1c2128"); t.textContent=ti+1;
+    g.append(c,t); tk.append(g);
+  });}
+  $("#centerTurn").textContent=s.phase==="won"?"Victoire : "+s.teams[s.winner].name:"Au tour de "+s.teams[s.turn].name;
+  $("#centerInfo").textContent=s.phase==="roll"?"Lancez le dé":s.phase==="move"?"Choisissez la direction":s.phase==="question"?"Question : "+CATS[s.q.c].n:s.phase==="reveal"?(s.ok?"Bonne réponse !":"Raté…"):s.phase==="wedge"?"Choix du camembert":"";
+}
+function wedgeSVG(w,size){
+  let p="";const r=size/2-1,cx=size/2,cy=size/2;
+  for(let i=0;i<6;i++){const a0=i/6*2*Math.PI-Math.PI/2,a1=(i+1)/6*2*Math.PI-Math.PI/2;const x1=cx+r*Math.cos(a0),y1=cy+r*Math.sin(a0),x2=cx+r*Math.cos(a1),y2=cy+r*Math.sin(a1);p+=`<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2} Z" fill="${w[i]?CATS[i].raw:'none'}" stroke="${CATS[i].raw}" stroke-width="1.5" opacity="${w[i]?1:.45}"/>`;}
+  return `<svg class="wedges" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${p}</svg>`;
+}
+function renderTeams(){
+  const box=$("#teamsList"); box.innerHTML="";
+  H.st.teams.forEach((t,i)=>{ const d=el("div",{class:"team"+(i===H.st.turn?" active":"")},el("span",{class:"tok",style:"background:"+t.color},String(i+1)),el("div",{},el("div",{class:"name"},t.name),el("div",{class:"small muted"},t.wedges.filter(Boolean).length+" camembert(s)"+(t.bonus?" · bonus "+t.bonus:"")))); const w=el("div"); w.innerHTML=wedgeSVG(t.wedges,44); d.append(w); box.append(d); });
+  const b=$("#banner"); if(H.st.phase==="won"){b.className="banner win";b.textContent="🏆 "+H.st.teams[H.st.winner].name+" remporte la partie !";}
+  else{b.className="banner";b.textContent="Au tour de "+H.st.teams[H.st.turn].name;}
+}
+function renderControls(){
+  const s=H.st;
+  $("#rollBtn").disabled=s.phase!=="roll"; $("#skipBtn").disabled=!(s.phase==="roll"||s.phase==="move");
+  $("#dice").textContent=s.dice??"?";
+  $("#wedgePick").classList.toggle("hidden",s.phase!=="wedge");
+  if(s.phase==="wedge"){ const box=$("#wedgeChoices");box.innerHTML=""; s.teams[s.turn].wedges.forEach((has,i)=>{ if(!has) box.append(el("button",{class:"btn",style:"background:"+CATS[i].raw+";color:"+(CATS[i].dark?"#1c2128":"#fff"),onclick:()=>giveWedge(i)},CATS[i].n)); }); }
+}
+function renderQuestion(){
+  const s=H.st, card=$("#qcard");
+  const showQ=s.phase==="question"||s.phase==="reveal"||s.phase==="wedge";
+  card.classList.toggle("hidden",!showQ); if(!showQ)return;
+  const q=s.q; card.style.background=CATS[q.c].raw; card.style.color=CATS[q.c].dark?"#1c2128":"#fff";
+  $("#qcat").textContent=CATS[q.c].n+(q.c===6?" ★":"")+"  ·  "+["","Bac Pro","BTS","Licence"][q.l];
+  $("#qtext").textContent=q.q;
+  const counts=[0,0,0,0]; for(const p in H.answers){ if(H.answers[p].team===s.turn) counts[H.answers[p].choice]++; }
+  const box=$("#qopts"); box.innerHTML="";
+  q.o.forEach((o,i)=>{ const b=el("button",{class:"opt"+(s.phase!=="question"?(i===q.a?" good":(i===s.chosen?" bad":"")):"")+(s.phase==="question"&&i===s.chosen?" chosen":""),onclick:()=>{ if(s.phase==="question"){ s.chosen=i; resolveAnswer(i);} }},el("span",{class:"l"},LETTERS[i]),el("span",{},o),el("span",{class:"votes"},counts[i]?"● "+counts[i]:"")); if(CATS[q.c].dark){b.style.color="#1c2128";b.style.borderColor="rgba(0,0,0,.3)";b.style.background="rgba(0,0,0,.06)";} box.append(b); });
+  const oral=$("#oralOk"),oralKo=$("#oralKo");
+  [oral,oralKo].forEach(b=>{b.style.color=CATS[q.c].dark?"#1c2128":"#fff";b.style.borderColor=CATS[q.c].dark?"#1c2128":"#fff";});
+  $("#validateBtn").classList.toggle("hidden",s.phase!=="question"); oral.classList.toggle("hidden",s.phase!=="question"); oralKo.classList.toggle("hidden",s.phase!=="question");
+  $("#nextBtn").classList.toggle("hidden",s.phase!=="reveal");
+  const ex=$("#qexplain"); ex.classList.toggle("hidden",s.phase==="question"); ex.textContent=(s.ok?"Bonne réponse. ":"Mauvaise réponse — la bonne était "+LETTERS[q.a]+". ")+q.e;
+  const nAns=Object.values(H.answers).filter(a=>a.team===s.turn).length;
+  $("#validateBtn").textContent=nAns?"Valider la réponse de l'équipe ("+nAns+")":"Valider la réponse de l'équipe";
+  $("#qtimer").textContent=s.phase==="question"&&H.settings.timer?H.remaining+" s":"";
+}
+
+// ---- game flow ----
+function rollDice(){
+  if(H.st.phase!=="roll")return;
+  let n=0; const id=setInterval(()=>{$("#dice").textContent=1+Math.floor(Math.random()*6); if(++n>8){clearInterval(id); const d=1+Math.floor(Math.random()*6); H.st.dice=d; const pos=H.st.teams[H.st.turn].pos; H.st.moveOptions=[...new Set([(pos+d)%N,(pos-d+N)%N])]; H.st.phase="move"; H.st.epoch++; render(); }},70);
+}
+$("#rollBtn").onclick=rollDice;
+$("#skipBtn").onclick=()=>{ nextTeam(); };
+function moveTo(pos){
+  const s=H.st; s.teams[s.turn].pos=pos; s.moveOptions=[]; s.q=pickQuestion(catOf(pos)); s.phase="question"; s.chosen=null; s.ok=null; H.answers={}; s.epoch++;
+  startTimer(); render();
+}
+function startTimer(){
+  stopTimer(); if(!H.settings.timer){H.remaining=0;return;}
+  H.remaining=H.settings.timer;
+  H.timerId=setInterval(()=>{ H.remaining--; $("#qtimer").textContent=H.remaining+" s"; if(H.remaining<=0){ stopTimer(); validateTeam(true);} },1000);
+}
+function stopTimer(){ if(H.timerId){clearInterval(H.timerId);H.timerId=null;} }
+function checkAutoValidate(){
+  const members=peersList().filter(p=>p.presence.team===H.st.turn).length;
+  const n=Object.values(H.answers).filter(a=>a.team===H.st.turn).length;
+  if(members>0&&n>=members) validateTeam(false);
+}
+function validateTeam(timeout){
+  if(H.st.phase!=="question")return;
+  const votes=Object.values(H.answers).filter(a=>a.team===H.st.turn);
+  if(!votes.length){ if(timeout){ H.st.chosen=null; resolveAnswer(-1);} return; }
+  const counts=[0,0,0,0]; votes.forEach(v=>counts[v.choice]++);
+  let best=votes[0].choice; counts.forEach((c,i)=>{ if(c>counts[best]) best=i; });
+  H.st.chosen=best; resolveAnswer(best);
+}
+$("#validateBtn").onclick=()=>validateTeam(true);
+$("#oralOk").onclick=()=>{ H.st.chosen=H.st.q.a; resolveAnswer(H.st.q.a); };
+$("#oralKo").onclick=()=>{ H.st.chosen=null; resolveAnswer(-1); };
+function resolveAnswer(choice){
+  const s=H.st; if(s.phase!=="question")return; stopTimer();
+  s.ok=choice===s.q.a; s.phase="reveal";
+  // bonus for other teams answering right (majority per team)
+  const per={}; Object.values(H.answers).forEach(a=>{ if(a.team===s.turn)return; (per[a.team]=per[a.team]||[0,0])[a.choice===s.q.a?0:1]++; });
+  for(const t in per){ if(per[t][0]>per[t][1]) s.teams[t].bonus++; }
+  s.epoch++; render();
+}
+$("#nextBtn").onclick=()=>{
+  const s=H.st, pos=s.teams[s.turn].pos, c=catOf(pos);
+  if(s.ok){
+    if(c===6){ if(s.teams[s.turn].wedges.every(Boolean)){ s.phase="roll"; } else { s.phase="wedge"; s.epoch++; render(); return; } }
+    else { if(WEDGE_AT(pos)) s.teams[s.turn].wedges[c]=true; if(checkWin())return; s.phase="roll"; }
+    s.q=null; s.dice=null; s.epoch++; render();
+  } else nextTeam();
+};
+function giveWedge(i){ H.st.teams[H.st.turn].wedges[i]=true; if(checkWin())return; H.st.phase="roll"; H.st.q=null; H.st.dice=null; H.st.epoch++; render(); }
+function checkWin(){ const t=H.st.teams[H.st.turn]; if(t.wedges.filter(Boolean).length>=H.settings.win){ H.st.phase="won"; H.st.winner=H.st.turn; H.st.epoch++; stopTimer(); render(); return true;} return false; }
+function nextTeam(){ const s=H.st; stopTimer(); s.turn=(s.turn+1)%s.teams.length; s.phase="roll"; s.q=null; s.dice=null; s.moveOptions=[]; H.answers={}; s.epoch++; render(); }
+
+// =====================================================================
+// PLAYER
+// =====================================================================
+const P={room:null,state:null,team:null,name:"",answered:false,tick:null,remaining:0};
+$("#goPlayer").onclick=()=>{ show("player"); prefillCode(); };
+$("#pBack").onclick=()=>{ if(P.peer){try{P.peer.destroy();}catch(e){} P.peer=null;P.conn=null;P.state=null;P.team=null;} $("#pJoin").classList.remove("hidden");$("#pGame").classList.add("hidden");$("#pSolo").classList.add("hidden"); show("landing"); };
+function prefillCode(){ const u=new URL(location.href); const c=u.searchParams.get("room")||(location.hash.match(/room=([A-Za-z0-9]+)/)||[])[1]; if(c)$("#pCode").value=c.toUpperCase(); }
+(function autoPlayer(){ const u=new URL(location.href); if(u.searchParams.get("room")||/room=/.test(location.hash)){ show("player"); prefillCode(); } })();
+
+function pSend(m){ if(P.conn&&P.conn.open){ try{P.conn.send(m);}catch(e){} } }
+$("#pConnect").onclick=()=>{
+  const code=$("#pCode").value.trim().toUpperCase(), name=$("#pName").value.trim();
+  if(code.length<4||!name){ $("#pStatus").textContent="Indiquez le code et votre prénom."; return; }
+  if(!window.Peer){ soloMode(); return; }
+  P.name=name; P.code=code; $("#pStatus").textContent="Connexion au plateau…"; $("#pConnect").disabled=true;
+  if(P.peer){try{P.peer.destroy();}catch(e){}}
+  P.peer=new Peer(PEER_OPTS);
+  P.peer.on("error",e=>{ $("#pConnect").disabled=false; if(e.type==="peer-unavailable") $("#pStatus").textContent="Aucun plateau avec le code "+code+". Vérifiez le code au tableau."; else $("#pStatus").textContent="Connexion impossible ("+e.type+"). Réessayez ou passez en entraînement solo."; if(!P.state) offerSolo(); });
+  P.peer.on("open",()=>{
+    P.conn=P.peer.connect(peerId(code),{reliable:true});
+    P.conn.on("open",()=>{ $("#pStatus").textContent="Connecté. En attente du plateau…"; pSend({t:"hello",name:P.name.slice(0,20)}); if(P.team!=null)pSend({t:"team",team:P.team}); $("#pTeamBox").style.display=""; });
+    P.conn.on("data",d=>{ if(d&&d.t==="state") onState(d); });
+    P.conn.on("close",()=>{ $("#pStatus").textContent="Plateau déconnecté. Reconnexion…"; $("#pJoin").classList.remove("hidden"); setTimeout(()=>{ if(P.peer&&!P.peer.destroyed){ P.conn=P.peer.connect(peerId(code),{reliable:true}); P.conn.on("open",()=>{pSend({t:"hello",name:P.name});if(P.team!=null)pSend({t:"team",team:P.team});$("#pJoin").classList.add("hidden");}); P.conn.on("data",d=>{ if(d&&d.t==="state") onState(d); }); } },3000); });
+  });
+  P.timeout=setTimeout(()=>{ if(!P.state){ $("#pStatus").textContent="Toujours rien du plateau. Le formateur a-t-il lancé la partie avec ce code ?"; $("#pConnect").disabled=false; offerSolo(); } },15000);
+};
+function offerSolo(){ if($("#soloBtn"))return; $("#pStatus").after(el("button",{id:"soloBtn",class:"btn sec",onclick:soloMode},"S'entraîner seul en attendant")); }
+function onState(s){
+  if(!s||typeof s!=="object")return;
+  const first=!P.state; P.state=s;
+  if(first){ clearTimeout(P.timeout); $("#pStatus").textContent="Choisissez votre équipe."; renderTeamPick(); }
+  if(P.team!=null){ $("#pJoin").classList.add("hidden"); $("#pGame").classList.remove("hidden"); renderPlayer(); }
+  else renderTeamPick();
+}
+function renderTeamPick(){
+  const box=$("#pTeams"); box.innerHTML="";
+  P.state.teams.forEach((t,i)=>box.append(el("button",{onclick:()=>{ P.team=i; pSend({t:"team",team:i}); $("#pJoin").classList.add("hidden"); $("#pGame").classList.remove("hidden"); renderPlayer(); }},el("span",{class:"tok",style:"background:"+t.color+";width:22px;height:22px;border-radius:50%;display:inline-block"}),t.name)));
+}
+let lastQKey=null;
+function renderPlayer(){
+  const s=P.state, me=s.turn===P.team, team=s.teams[P.team];
+  const tb=$("#pTurn"); tb.className="turnbadge"+(me?" me":"");
+  tb.textContent=s.phase==="won"?"🏆 "+s.teams[s.winner].name+" a gagné !":(me?"C'est à vous, "+team.name+" !":"Au tour de "+s.teams[s.turn].name);
+  $("#pInfo").textContent=team.name+" : "+team.w+" camembert(s)"+(team.bonus?" · "+team.bonus+" point(s) bonus":"")+" · Position "+team.pos;
+  const act=$("#pActions"); act.innerHTML="";
+  if(me&&s.phase==="roll") act.append(el("button",{class:"btn big",onclick:()=>pSend({t:"roll"})},"Lancer le dé"));
+  if(me&&s.phase==="move"){ act.append(el("span",{class:"muted"},"Dé : "+s.dice+" — direction ?")); s.moveOptions.forEach((p,k)=>act.append(el("button",{class:"btn",style:"background:"+CATS[catOf(p)].raw+";color:"+(CATS[catOf(p)].dark?"#1c2128":"#fff"),onclick:()=>pSend({t:"choose",pos:p})},(k===0?"Sens horaire → ":"Sens anti-horaire ← ")+CATS[catOf(p)].n+(WEDGE_AT(p)?" ◕":"")+(SPECIAL.has(p)?" ★":"")))); }
+  const pq=$("#pq"); const showQ=s.q&&(s.phase==="question"||s.phase==="reveal"||s.phase==="wedge");
+  pq.classList.toggle("hidden",!showQ);
+  if(showQ){
+    const key=s.epoch+":"+s.q.q; if(key!==lastQKey&&s.phase==="question"){ lastQKey=key; P.answered=false; P.choice=null; }
+    pq.style.background=CATS[s.q.cat].raw; pq.style.color=CATS[s.q.cat].dark?"#1c2128":"#fff";
+    $("#pqcat").textContent=CATS[s.q.cat].n+(me?"":" · pour "+s.teams[s.turn].name+" (bonus si juste)");
+    $("#pqtext").textContent=s.q.q;
+    const box=$("#pqopts"); box.innerHTML="";
+    s.q.o.forEach((o,i)=>{ const cls="opt"+(s.reveal?(i===s.reveal.a?" good":(i===P.choice?" bad":"")):"")+(P.choice===i&&!s.reveal?" chosen":""); const b=el("button",{class:cls,onclick:()=>{ if(s.phase!=="question"||P.answered)return; P.answered=true; P.choice=i; pSend({t:"answer",choice:i}); renderPlayer(); }},el("span",{class:"l"},LETTERS[i]),el("span",{},o)); if(CATS[s.q.cat].dark){b.style.color="#1c2128";b.style.borderColor="rgba(0,0,0,.3)";b.style.background="rgba(0,0,0,.06)";} b.disabled=P.answered||s.phase!=="question"; box.append(b); });
+    const ex=$("#pqexplain"); ex.classList.toggle("hidden",!s.reveal);
+    if(s.reveal){ const good=P.choice===s.reveal.a; ex.innerHTML=""; ex.append(el("div",{class:"result "+(P.choice==null?"":good?"good":"bad")},P.choice==null?"Réponse : "+LETTERS[s.reveal.a]:good?"Juste !":"Raté — c'était "+LETTERS[s.reveal.a]),el("div",{},s.reveal.e)); }
+    else if(P.answered){ ex.classList.remove("hidden"); ex.textContent="Réponse envoyée. En attente de l'équipe…"; }
+    // timer
+    if(s.phase==="question"&&s.timer){ P.remaining=s.remaining; if(!P.tick) P.tick=setInterval(()=>{P.remaining=Math.max(0,P.remaining-1);$("#pqtimer").textContent=P.remaining+" s";},1000); $("#pqtimer").textContent=P.remaining+" s"; }
+    else { if(P.tick){clearInterval(P.tick);P.tick=null;} $("#pqtimer").textContent=""; }
+  } else { if(P.tick){clearInterval(P.tick);P.tick=null;} }
+}
+
+// ---- solo training fallback ----
+const S={score:0,total:0,q:null};
+function soloMode(){
+  $("#pJoin").classList.add("hidden"); $("#pSolo").classList.remove("hidden");
+  const sc=$("#soloCat"); if(!sc.options.length){ sc.append(el("option",{value:"-1"},"Toutes les compétences")); CATS.forEach((c,i)=>sc.append(el("option",{value:i},c.n))); }
+  soloNext();
+}
+function soloNext(){
+  const cat=Number($("#soloCat").value), lv=Number($("#soloLvl").value);
+  let cand=QUESTIONS.filter(q=>(cat<0||q.c===cat)&&(!lv||q.l===lv)); if(!cand.length)cand=QUESTIONS;
+  S.q=cand[Math.floor(Math.random()*cand.length)];
+  const q=S.q, box=$("#sq"); box.classList.remove("hidden"); box.style.background=CATS[q.c].raw; box.style.color=CATS[q.c].dark?"#1c2128":"#fff";
+  $("#sqcat").textContent=CATS[q.c].n+" · "+["","Bac Pro","BTS","Licence"][q.l]; $("#sqtext").textContent=q.q;
+  const o=$("#sqopts"); o.innerHTML=""; $("#sqexplain").classList.add("hidden");
+  q.o.forEach((t,i)=>{ const b=el("button",{class:"opt",onclick:()=>{ if(b.disabled)return; [...o.children].forEach(x=>x.disabled=true); S.total++; if(i===q.a){S.score++;b.classList.add("good");}else{b.classList.add("bad");o.children[q.a].classList.add("good");} $("#soloScore").textContent=S.score+" / "+S.total; const ex=$("#sqexplain"); ex.classList.remove("hidden"); ex.textContent=q.e; }},el("span",{class:"l"},LETTERS[i]),el("span",{},t)); if(CATS[q.c].dark){b.style.color="#1c2128";b.style.borderColor="rgba(0,0,0,.3)";b.style.background="rgba(0,0,0,.06)";} o.append(b); });
+}
+$("#soloNext").onclick=soloNext;
+</script>
+</body>
+</html>
